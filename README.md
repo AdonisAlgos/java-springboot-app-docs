@@ -507,21 +507,30 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install docker-ce docker-ce-cli cont
 - Installs Docker (docker-ce, docker-ce-cli, containerd.io) and Docker Compose plugin.
 - This step ensures that the EC2 instance can run Docker containers and orchestrate them using Docker Compose.
 
-#### 3. Cloning the Application Repository
+#### 3. Creating a directory for the Docker Compose project
 
 ```bash
-git clone https://AdonisAlgos:<pat_token>@github.com/AdonisAlgos/java-springboot-app.git java-springboot-app
+mkdir prov-app-db-docker-compose
+cd prov-app-db-docker-compose
+```
+**Purpose:**
+- This directory will serve as the Docker Compose project location and name, which is a requirement.
+- Additionally, any files within this directory can be referenced and utilized by Docker Compose to complete the application and database setup.
+
+#### 4. Downloading the library.sql file from GitHub
+
+```bash
+curl -u <pat_token>:x-oauth-basic -O https://raw.githubusercontent.com/AdonisAlgos/java-springboot-app/main/library.sql
 ```
 
 **Purpose:**
-- Clones the application's source code from the GitHub repository into a directory called java-springboot-app.
-- This ensures the application code and database source script is available on the EC2 instance.
+- Fetches the databases's seed code from the GitHub repository.
+- This ensures the database source script is available on the EC2 instance within the docker compose project.
 
-#### 4. Create Docker Compose Configuration:
+#### 5. Create Docker Compose Configuration:
 
 ```bash
-cat <<EOL > /home/ubuntu/docker-compose.yml
-version: "3.8"
+cat <<EOL > ./docker-compose.yml
 services:
   mysql:
     image: mysql:latest
@@ -529,7 +538,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: root_pass
       MYSQL_DATABASE: library
       MYSQL_USER: db_setup
       MYSQL_PASSWORD: db_setup
@@ -537,7 +546,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./library.sql:/docker-entrypoint-initdb.d/library.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -549,8 +558,8 @@ services:
       - "5000:5000"
     environment:
       DB_HOST: "jdbc:mysql://mysql:3306/library"
-      DB_USER: "db_setup"
-      DB_PASS: "db_setup"
+      DB_USER: db_setup
+      DB_PASS: db_setup
     depends_on:
       mysql:
         condition: service_healthy
@@ -585,14 +594,22 @@ Creates the docker-compose.yml file to configure and orchestrate:
 - Volume Block: Persists database data.
   - `volumes: mysql_data:`: Defines a named volume (mysql_data) to store the MySQL database files persistently. This ensures the database is not lost if the MySQL container is restarted or recreated.
 
-#### 5. Start Containers with Docker Compose:
+#### 6. Start Containers with Docker Compose:
 
 ```bash
-cd /home/ubuntu/java-springboot-app
-sudo docker-compose up -d
+sudo docker compose up -d
 ```
 **Purpose**:
 - Starts all containers defined in the docker-compose.yml file in detached mode (-d).
+
+#### 7. Verifying running containers
+
+```bash
+docker ps
+```
+
+**Purpose**:
+- Displays all running containers for service verification and logging purposes.
 
 ---
 
